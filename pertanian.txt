@@ -1,0 +1,43 @@
+#include <DHT.h>
+#define DHTPIN 2         // Pin DHT11 terhubung ke pin 2
+#define DHTTYPE DHT11    // Tipe sensor DHT
+DHT dht(DHTPIN, DHTTYPE);
+#define SOIL_PIN A0      // Pin analog untuk potensiometer (simulasi sensor tanah)
+#define BUZZER_PIN 8     // Pin digital untuk buzzer
+void setup() {
+  Serial.begin(9600);
+  dht.begin();
+
+  pinMode(SOIL_PIN, INPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+
+  Serial.println("Sistem Monitoring Suhu & Kelembaban Tanah");
+}
+
+void loop() {
+  // Membaca data dari sensor DHT11
+  float suhu = dht.readTemperature();
+  float kelembabanUdara = dht.readHumidity();
+
+  // Membaca nilai dari potensiometer (simulasi kelembaban tanah)
+  int nilaiAnalog = analogRead(SOIL_PIN);
+  int kelembabanTanah = map(nilaiAnalog, 1023, 0, 0, 100); // 0% = kering, 100% = basah
+
+  // Tampilkan hasil
+  Serial.print("Suhu: ");
+  Serial.print(suhu);
+  Serial.print(" °C | Kelembaban Udara: ");
+  Serial.print(kelembabanUdara);
+  Serial.print(" % | Kelembaban Tanah: ");
+  Serial.print(kelembabanTanah);
+  Serial.println(" %");
+
+  // Logika buzzer
+  if (kelembabanTanah < 30) {
+    digitalWrite(BUZZER_PIN, HIGH);  // Aktifkan buzzer jika tanah kering
+  } else {
+    digitalWrite(BUZZER_PIN, LOW);   // Matikan buzzer jika tanah cukup lembab
+  }
+
+  delay(2000); // jeda pembacaan data 2 detik
+}
