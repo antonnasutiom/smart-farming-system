@@ -1,0 +1,82 @@
+#define BLYNK_TEMPLATE_ID   "TMPL6oxETh6KO"     
+#define BLYNK_TEMPLATE_NAME "Monitoring Tanah" 
+#define BLYNK_AUTH_TOKEN    "xuF9EYETgyFfHWdz9XISE_utBr8NTeeP"  
+
+#include <WiFi.h>
+#include <BlynkSimpleEsp32.h>
+#include <DHT.h>
+
+// === BLYNK CONFIG ===
+char auth[] = BLYNK_AUTH_TOKEN;   
+char ssid[] = "Wokwi-GUEST";                
+char pass[] = "";                           
+
+// === PIN KONFIGURASI ===
+#define DHTPIN 15
+#define DHTTYPE DHT22
+#define SOIL_PIN 34
+#define BUZZER_PIN 5
+
+DHT dht(DHTPIN, DHTTYPE);
+
+// === VIRTUAL PIN BLYNK ===
+#define VPIN_SUHU      V0
+#define VPIN_KELEMBABAN V1
+#define VPIN_SOIL      V2
+
+unsigned long previousMillis = 0;
+const long interval = 2000;  // 2 detik
+
+void setup() {
+  Serial.begin(9600);
+  Blynk.begin(auth, ssid, pass);
+  dht.begin();
+
+  pinMode(SOIL_PIN, INPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+
+  Serial.println("Sistem Monitoring Terhubung ke Blynk");
+}
+
+void loop() {
+  Blynk.run();
+
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+
+    // Baca sensor
+    float suhu = dht.readTemperature();
+    float kelembabanUdara = dht.readHumidity();
+    int nilaiAnalog = analogRead(SOIL_PIN);
+    int kelembabanTanah = map(nilaiAnalog, 4095, 0, 0, 100); // 0–100%
+
+    // Cek nilai DHT valid
+    if (isnan(suhu) || isnan(kelembabanUdara)) {
+      Serial.println("Gagal membaca sensor DHT!");
+      return;  // skip pengiriman data jika error
+    }
+
+    // Debug serial
+    Serial.print("Suhu: ");
+    Serial.print(suhu);
+    Serial.print(" °C | Kelembaban Udara: ");
+    Serial.print(kelembabanUdara);
+    Serial.print(" % | Kelembaban Tanah: ");
+    Serial.print(kelembabanTanah);
+    Serial.println(" %");
+
+    // Kirim ke Blynk
+    Blynk.virtualWrite(VPIN_SUHU, suhu);
+    Blynk.virtualWrite(VPIN_KELEMBABAN, kelembabanUdara);
+    Blynk.virtualWrite(VPIN_SOIL, kelembabanTanah);
+
+    // Buzzer
+    if (kelembabanTanah < 30) {
+      digitalWrite(BUZZER_PIN, HIGH);
+    } else {
+      digitalWrite(BUZZER_PIN, LOW);
+    }
+  }
+}
